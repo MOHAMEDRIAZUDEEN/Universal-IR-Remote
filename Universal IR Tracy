@@ -1,0 +1,68 @@
+#include <WiFi.h>
+#include <WebServer.h>
+#include <IRremoteESP8266.h>
+#include <IRsend.h>
+
+const char* ssid = "RIYAZ";
+const char* password = "hajima0978";
+
+WebServer server(80);
+
+const uint16_t IR_LED = 4;
+IRsend irsend(IR_LED);
+
+// Replace with your real ON and OFF codes
+uint32_t onCode  = 0x1E1604DF;
+uint32_t offCode = 0xC0B847CB;
+
+void handleRoot() {
+  String page = "<html><body style='text-align:center;'>";
+  page += "<h1>ESP32 Power Remote</h1>";
+  page += "<h3>WiFi Connected</h3>";
+
+  page += "<a href='/on'><button style='width:200px;height:80px;font-size:25px;'>ON</button></a><br><br>";
+  page += "<a href='/off'><button style='width:200px;height:80px;font-size:25px;'>OFF</button></a>";
+
+  page += "</body></html>";
+
+  server.send(200, "text/html", page);
+}
+
+void setup() {
+  Serial.begin(115200);
+  irsend.begin();
+
+  Serial.println("Connecting WiFi...");
+  WiFi.begin(ssid, password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+  Serial.println("WiFi Connected!");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
+
+  server.on("/", handleRoot);
+
+  server.on("/on", []() {
+    Serial.println("ON Pressed");
+    irsend.sendNEC(onCode, 32);
+    server.send(200, "text/plain", "ON Sent");
+  });
+
+  server.on("/off", []() {
+    Serial.println("OFF Pressed");
+    irsend.sendNEC(offCode, 32);
+    server.send(200, "text/plain", "OFF Sent");
+  });
+
+  server.begin();
+  Serial.println("Web Server Started");
+}
+
+void loop() {
+  server.handleClient();
+}
